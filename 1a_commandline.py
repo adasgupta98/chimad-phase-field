@@ -66,17 +66,17 @@ cvar_data = []
 f_data = []
 # checks whether a folder for the pickles from this simulation exists
 # if not, creates one in the home directory
-file_dir = "~/1a{0}".format(nx)
+file_dir = "1a{0}".format(nx)
 if not os.path.isdir(file_dir):
     os.makedirs(file_dir)
-file_name = "~/1a{0}/1a{0}.txt".format(nx)
+file_name = "1a{0}/1a{0}".format(nx)
 
 def save_data(time, cvar, f):
     time_data.append(time)
     cvar_data.append(np.array(cvar.value))
     f_data.append(f.value)
     
-    np.savez(file_name, time = time_data, c_var = c_var, f = f_data)
+    np.savez(file_name, time = time_data, c_var = cvar_data, f = f_data)
 
 # solver equation    
 eqn = fp.TransientTerm(coeff=1.) == fp.DiffusionTerm(M * f_0_var(c_var)) - fp.DiffusionTerm((M, kappa))
@@ -88,7 +88,7 @@ total_sweeps = 2
 tolerance = 1e-1
 
 # controls on how long the simulation runs: steps, duration, or both
-total_steps = 100
+total_steps = 20
 duration = 3000.0
 
 c_var.updateOld()
@@ -101,17 +101,16 @@ while steps <= total_steps:
     # equivalent to the average value of the free energy for any cell,
     # multiplied by the number of cells and the area of each cell
     # (since this is a 2D domain)
-    save_data(elapsed, c_var, f(c_var).cellVolumeAverage*mesh.numberOfCells*(dx**2))
-    
+       
     
     for sweeps in range(total_sweeps):
         res = eqn.sweep(c_var, dt=dt, solver=solver)
         
-
     if res < res0 * tolerance:
-          
+        print "Saving data"
+        save_data(elapsed, c_var, f(c_var).cellVolumeAverage*mesh.numberOfCells*(dx**2))   
         # anything in this loop will only be executed 100 times
-        if (steps%(total_steps/100)==0):
+        if (steps%(total_steps/1)==0):
             print steps
             print elapsed
             
