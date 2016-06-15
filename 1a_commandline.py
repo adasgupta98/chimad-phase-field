@@ -60,14 +60,22 @@ def plotf_c():
     plt.show()
     
 # save elapsed time and free energy at each data point
-f_data = []
 time_data = []
-file_name = "1a{0}x{1}.txt".format(nx, dx)
+cvar_data = []
+f_data = []
+# checks whether a folder for the pickles from this simulation exists
+# if not, creates one in the home directory
+file_dir = "~/1a{0}".format(nx)
+if not os.path.isdir(file_dir):
+    os.makedirs(file_dir)
+file_name = "~/1a{0}/1a{0}.txt".format(nx)
 
-def save_data(f, time):
-    f_data.append(f.value)
+def save_data(time, cvar, f):
     time_data.append(time)
-    np.savetxt(file_name, zip(time_data, f_data))
+    cvar_data.append(np.array(cvar.value))
+    f_data.append(f.value)
+    
+    np.savetxt(file_name, zip(time_data, cvar_data, f_data))
 
 # solver equation    
 eqn = fp.TransientTerm(coeff=1.) == fp.DiffusionTerm(M * f_0_var(c_var)) - fp.DiffusionTerm((M, kappa))
@@ -79,7 +87,7 @@ total_sweeps = 2
 tolerance = 1e-1
 
 # controls on how long the simulation runs: steps, duration, or both
-total_steps = 4000
+total_steps = 100
 duration = 3000.0
 
 c_var.updateOld()
@@ -88,30 +96,23 @@ solver = Solver()
 print "Starting Solver."
 while steps <= total_steps:
     res0 = eqn.sweep(c_var, dt=dt, solver=solver)
-
+    #record the volume integral of the free energy 
+    # equivalent to the average value of the free energy for any cell,
+    # multiplied by the number of cells and the area of each cell
+    # (since this is a 2D domain)
+    save_data(elapsed, c_var, f(c_var).cellVolumeAverage*mesh.numberOfCells*(dx**2))
+    
+    
     for sweeps in range(total_sweeps):
         res = eqn.sweep(c_var, dt=dt, solver=solver)
+        
 
     if res < res0 * tolerance:
-        # checks whether a folder for the pickles from this simulation exists
-        # if not, creates one in the home directory
-        file_dir = "~/1apickles{0}x{1}".format(nx, dx)
-        if not os.path.isdir(file_dir):
-            os.makedirs(file_dir)
-        
+          
         # anything in this loop will only be executed 100 times
         if (steps%(total_steps/100)==0):
             print steps
             print elapsed
-            
-            # record the volume integral of the free energy 
-            # equivalent to the average value of the free energy for any cell,
-            # multiplied by the number of cells and the area of each cell
-            # (since this is a 2D domain)
-            save_data(f(c_var).cellVolumeAverage*mesh.numberOfCells*(dx**2), elapsed)
-            # saves c_var in pickle file
-            fp.dump.write({'time' : steps, 'var': c_var}, '1apickles{0}x{1}/1a_{2}.pkl'.format(nx, dx, steps))
-            
             
         steps += 1
         elapsed += dt
