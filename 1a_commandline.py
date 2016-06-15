@@ -2,6 +2,7 @@
 # coding: utf-8
 
 # In[ ]:
+
 import numpy as np
 import sympy
 import fipy as fp
@@ -75,7 +76,7 @@ def save_data(time, cvar, f):
     cvar_data.append(np.array(cvar.value))
     f_data.append(f.value)
     
-    np.savetxt(file_name, zip(time_data, cvar_data, f_data))
+    np.savez(file_name, time = time_data, c_var = c_var, f = f_data)
 
 # solver equation    
 eqn = fp.TransientTerm(coeff=1.) == fp.DiffusionTerm(M * f_0_var(c_var)) - fp.DiffusionTerm((M, kappa))
@@ -124,4 +125,5 @@ while steps <= total_steps:
 
 # simulation ends
 print 'elapsed_time:', elapsed
+
 
