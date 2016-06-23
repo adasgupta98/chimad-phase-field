@@ -29,7 +29,8 @@ if (problem == "a"):
 elif (problem == "b"):
     mesh = fp.Grid2D(nx=nx, ny=nx, dx=dx, dy=dx)
 elif (problem == "c"):
-    mesh = fp.Grid2D(dx=0.5, dy=0.5, nx=40, ny=200) + (fp.Grid2D(dx=0.5, dy=0.5, nx=200, ny=40) + [[-40],[100]])
+#    mesh = fp.Grid2D(dx=0.5, dy=0.5, nx=40, ny=200) + (fp.Grid2D(dx=0.5, dy=0.5, nx=200, ny=40) + [[-40],[100]])
+    mesh = fp.Grid2D(Lx=20., Ly=100.0, nx=nx / 5, ny=nx) + (fp.Grid2D(Ly=20.0, Lx=100.0, nx=nx, ny=nx / 5) + [[-40],[100]])
 elif (problem == "d"):
     mesh = fp.Gmsh2DIn3DSpace('''
                           radius = 5.0;
@@ -67,22 +68,30 @@ c_0 = 0.5
 epsilon = 0.01
 rho_s = 5.0
 
+
+
 # solution variable
 c_var = fp.CellVariable(mesh=mesh, name=r"$c$", hasOld=True)
 
 # array of sample c-values: used in f versus c plot
 vals = np.linspace(-.1, 1.1, 1000)
 
-
-
 if (problem == 'a' or 'b' or 'c'):
-    x , y = np.array(mesh.x), np.array(mesh.y)
+    # 2D mesh coordinates
+    x, y = mesh.cellCenters
     # initial value for square and T domains
     c_var[:] = c_0 + epsilon * (np.cos(0.105 * x) * np.cos(0.11 * y) + (np.cos(0.13 * x) * np.cos(0.087 * y))**2 + np.cos(0.025 * x - 0.15 * y) * np.cos(0.07 * x - 0.02 * y))
 if (problem == 'd'):
-    # initial value for spherical domain
-    phi = fp.CellVariable(name=r"$\phi$", mesh=mesh)
+    # 3D mesh coordinates
+    x, y, z = mesh.cellCenters
+    
+    # convert from rectangular to spherical coordinates
     theta = fp.CellVariable(name=r"$\theta$", mesh=mesh)
+    theta = arccos(z / r)
+    phi = fp.CellVariable(name=r"$\phi$", mesh=mesh)
+    phi = arctan(y / x)
+    
+    # initial value for spherical domain
     c_var[:]  = c_0 + epsilon * ((np.cos(8*theta))*(np.cos(15*phi)) + ((np.cos(12*theta))*(np.cos(10*phi)))**2 + ((np.cos(2.5*theta - 1.5*phi))*(np.cos(7*theta - 2*phi))))
 
 # bulk free energy density
