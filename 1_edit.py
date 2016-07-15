@@ -6,6 +6,7 @@
 import numpy as np
 import sympy
 import fipy as fp
+from fipy import numerix as nmx
 import matplotlib.pyplot as plt
 import os
 import sys
@@ -16,59 +17,79 @@ f_0 = rho_s * (c - c_alpha)**2 * (c_beta - c)**2
 sympy.diff(f_0, c, 2)
 
 # command format:
-# python 1a_commandline.py 100 2.0 a
+# python 1_edit.py a 2.0 100
 # where nx = 100
 # and dx = 2.0
 # for benchmark problem 1a
-nx = int(sys.argv[1])
-dx = float(sys.argv[2])
-problem = sys.argv[3]
+# or
+# python 1_edit.py a 100 2500
+# for a sphere, radius 100 and containing 2500 cells
+
+problem = sys.argv[1]
+
+if (problem == 'a') or (problem == 'b') or (problem == 'c'):
+    nx = int(sys.argv[3])
+    dx = float (sys.argv[2])
+    epsilon = 0.01
 
 if (problem == "a"):
+    print "Creating mesh for problem a"
     mesh = fp.PeriodicGrid2D(nx=nx, ny=nx, dx=dx, dy=dx)
+    
 elif (problem == "b"):
+    print "Creating mesh for problem b"
     mesh = fp.Grid2D(nx=nx, ny=nx, dx=dx, dy=dx)
+    
 elif (problem == "c"):
+    print "Creating mesh for problem c"
 #    mesh = fp.Grid2D(dx=0.5, dy=0.5, nx=40, ny=200) + (fp.Grid2D(dx=0.5, dy=0.5, nx=200, ny=40) + [[-40],[100]])
     mesh = fp.Grid2D(Lx=20., Ly=100.0, nx=nx / 5, ny=nx) + (fp.Grid2D(Ly=20.0, Lx=100.0, nx=nx, ny=nx / 5) + [[-40],[100]])
+       
 elif (problem == "d"):
-    mesh = fp.Gmsh2DIn3DSpace('''
-                          radius = 5.0;
-                          cellSize = .3;
+    print "Creating mesh for problem da"
+    r = float(sys.argv[2])
+    numCellsDesired = int(sys.argv[3])
+    epsilon = 0.05
+    cellSize = 16 * np.pi * r**2 / (nmx.sqrt(3.) * numCellsDesired)
+    cellSize = nmx.sqrt(cellSize)
+    
+    substring1 = '''
+    radius = {0};
+    cellSize = {1};
+    '''.format(r, round(cellSize, 6))
 
-                          // create inner 1/8 shell
-                          Point(1) = {0, 0, 0, cellSize};
-                          Point(2) = {-radius, 0, 0, cellSize};
-                          Point(3) = {0, radius, 0, cellSize};
-                          Point(4) = {0, 0, radius, cellSize};
-                          Circle(1) = {2, 1, 3};
-                          Circle(2) = {4, 1, 2};
-                          Circle(3) = {4, 1, 3};
-                          Line Loop(1) = {1, -3, 2};
-                          Ruled Surface(1) = {1};
+    mesh = fp.Gmsh2DIn3DSpace(substring1 + '''
 
-                          // create remaining 7/8 inner shells
-                          t1[] = Rotate {{0,0,1},{0,0,0},Pi/2} {Duplicata{Surface{1};}};
-                          t2[] = Rotate {{0,0,1},{0,0,0},Pi} {Duplicata{Surface{1};}};
-                          t3[] = Rotate {{0,0,1},{0,0,0},Pi*3/2} {Duplicata{Surface{1};}};
-                          t4[] = Rotate {{0,1,0},{0,0,0},-Pi/2} {Duplicata{Surface{1};}};
-                          t5[] = Rotate {{0,0,1},{0,0,0},Pi/2} {Duplicata{Surface{t4[0]};}};
-                          t6[] = Rotate {{0,0,1},{0,0,0},Pi} {Duplicata{Surface{t4[0]};}};
-                          t7[] = Rotate {{0,0,1},{0,0,0},Pi*3/2} {Duplicata{Surface{t4[0]};}};
+    // create inner 1/8 shell
+    Point(1) = {0, 0, 0, cellSize};
+    Point(2) = {-radius, 0, 0, cellSize};
+    Point(3) = {0, radius, 0, cellSize};
+    Point(4) = {0, 0, radius, cellSize};
+    Circle(1) = {2, 1, 3};
+    Circle(2) = {4, 1, 2};
+    Circle(3) = {4, 1, 3};
+    Line Loop(1) = {1, -3, 2};
+    Ruled Surface(1) = {1};
 
-                          // create entire inner and outer shell
-                          Surface Loop(100)={1, t1[0],t2[0],t3[0],t7[0],t4[0],t5[0],t6[0]};
-                          ''', order=2.0).extrude(extrudeFunc=lambda r: 1.1*r)
+    // create remaining 7/8 inner shells
+    t1[] = Rotate {{0,0,1},{0,0,0},Pi/2} {Duplicata{Surface{1};}};
+    t2[] = Rotate {{0,0,1},{0,0,0},Pi} {Duplicata{Surface{1};}};
+    t3[] = Rotate {{0,0,1},{0,0,0},Pi*3/2} {Duplicata{Surface{1};}};
+    t4[] = Rotate {{0,1,0},{0,0,0},-Pi/2} {Duplicata{Surface{1};}};
+    t5[] = Rotate {{0,0,1},{0,0,0},Pi/2} {Duplicata{Surface{t4[0]};}};
+    t6[] = Rotate {{0,0,1},{0,0,0},Pi} {Duplicata{Surface{t4[0]};}};
+    t7[] = Rotate {{0,0,1},{0,0,0},Pi*3/2} {Duplicata{Surface{t4[0]};}};
+
+    // create entire inner and outer shell
+    Surface Loop(100)={1, t1[0],t2[0],t3[0],t7[0],t4[0],t5[0],t6[0]};
+    ''', order=2.0).extrude(extrudeFunc=lambda r: 1.01*r)
 
 c_alpha = 0.3
 c_beta = 0.7
 kappa = 2.0
 M = 5.0
 c_0 = 0.5
-epsilon = 0.01
 rho_s = 5.0
-
-
 
 # solution variable
 c_var = fp.CellVariable(mesh=mesh, name=r"$c$", hasOld=True)
@@ -78,19 +99,20 @@ vals = np.linspace(-.1, 1.1, 1000)
 
 if (problem == 'a' or 'b' or 'c'):
     # 2D mesh coordinates
-    x, y = mesh.cellCenters
+    x, y = np.array(mesh.x), np.array(mesh.y)
     # initial value for square and T domains
     c_var[:] = c_0 + epsilon * (np.cos(0.105 * x) * np.cos(0.11 * y) + (np.cos(0.13 * x) * np.cos(0.087 * y))**2 + np.cos(0.025 * x - 0.15 * y) * np.cos(0.07 * x - 0.02 * y))
 if (problem == 'd'):
+    print "number of cells: " , mesh.numberOfCells
     # 3D mesh coordinates
-    x, y, z = mesh.cellCenters
+    x, y, z = np.array(mesh.x), np.array(mesh.y), np.array(mesh.z)
     
     # convert from rectangular to spherical coordinates
     theta = fp.CellVariable(name=r"$\theta$", mesh=mesh)
-    theta = arccos(z / r)
+    theta = nmx.arctan2(z, nmx.sqrt(x**2 + y**2))
     phi = fp.CellVariable(name=r"$\phi$", mesh=mesh)
-    phi = arctan(y / x)
-    
+    phi = nmx.arctan2(y, x)
+     
     # initial value for spherical domain
     c_var[:]  = c_0 + epsilon * ((np.cos(8*theta))*(np.cos(15*phi)) + ((np.cos(12*theta))*(np.cos(10*phi)))**2 + ((np.cos(2.5*theta - 1.5*phi))*(np.cos(7*theta - 2*phi))))
 
@@ -117,10 +139,10 @@ cvar_data = []
 f_data = []
 # checks whether a folder for the pickles from this simulation exists
 # if not, creates one in the home directory
-file_dir = "/data/and9/surf-research/Anushka/1{0}{1}".format(problem, nx)
+file_dir = "/data/and9/surf-research/Anushka/1{0}".format(problem, int(sys.argv[3]))
 if not os.path.exists(file_dir):
     os.makedirs(file_dir)
-file_name = "/data/and9/surf-research/Anushka/1{0}{1}/1{0}{1}".format(problem, nx)
+file_name = "/data/and9/surf-research/Anushka/1{0}/1{0}{1}".format(problem, int(sys.argv[3]))
 
 def save_data(time, cvar, f):
     time_data.append(time)
@@ -140,7 +162,7 @@ tolerance = 1e-1
 
 # controls on how long the simulation runs: steps, duration, or both
 total_steps = 20
-duration = 5
+duration = 10000
 
 c_var.updateOld()
 from fipy.solvers.pysparse import LinearLUSolver as Solver
@@ -163,7 +185,15 @@ while elapsed <= duration:
         # anything in this loop will only be executed every 10 steps
         if (steps%10==0):
             print "Saving data"
-            save_data(elapsed, c_var, f(c_var).cellVolumeAverage*mesh.numberOfCells*(dx**2))
+            if (problem == 'a') or (problem == 'b') or (problem == 'c'):
+                print "saving for a or b or c!!"
+                save_data(elapsed, c_var, f(c_var).cellVolumeAverage*mesh.numberOfCells*dx*dx)
+            
+            elif (problem == 'd'):
+                print "saving for d!!"
+                save_data(elapsed, c_var, f(c_var).cellVolumeAverage * mesh.cellVolumes.sum()/(.01*r))
+
+        print "f", f(c_var).cellVolumeAverage * mesh.cellVolumes.sum()
         steps += 1
         elapsed += dt
         dt *= 1.1
