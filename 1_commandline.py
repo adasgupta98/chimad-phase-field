@@ -96,7 +96,7 @@ tolerance = 1e-1
 
 # controls on how long the simulation runs: steps, duration, or both
 total_steps = 20
-duration = 10000
+duration = 4600
 
 c_var.updateOld()
 from fipy.solvers.pysparse import LinearLUSolver as Solver
