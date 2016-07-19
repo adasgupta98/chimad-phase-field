@@ -135,19 +135,21 @@ def plotf_c():
     plt.show()
     
 # save elapsed time and free energy at each data point
+#time_data = []
+#cvar_data = []
+#f_data = []
 # checks whether a folder for the pickles from this simulation exists
 # if not, creates one in the home directory
+
 if (problem == 'd'):
-    file_dir = "/data/and9/surf-research/Anushka/1{0}".format(problem)
+    file_dir = "/data/and9/surf-research/Anushka/1{0}LU".format(problem)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
-
 else:    
-    file_dir = "/data/and9/surf-research/Anushka/1{0}".format(problem, int(sys.argv[3]))
+    file_dir = "/data/and9/surf-research/Anushka/1{0}LU".format(problem, int(sys.argv[3]))
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     
-
 def save_data(time, cvar, f, steps):
     time_data=time
     cvar_data=np.array(cvar.value)
@@ -155,9 +157,9 @@ def save_data(time, cvar, f, steps):
     
     if (problem == 'd'):
         file_name = file_dir + "/1{0}{1}_{2}".format(problem, int(nmx.sqrt(numCellsDesired)), str(steps).rjust(5, '0'))
+        
     else:
         file_name = file_dir + "/1{0}{1}_{2}".format(problem, int(sys.argv[3]), str(steps).rjust(5, '0'))
-        
     np.savez(file_name, time = time_data, c_var = cvar_data, f = f_data)
 
 # solver equation    
@@ -174,11 +176,16 @@ total_steps = 20
 duration = 10000
 
 c_var.updateOld()
-from fipy.solvers.pysparse import LinearLUSolver as Solver
+from fipy.solvers.pysparse import LinearPCGSolver as Solver
 solver = Solver()
 print "Starting Solver."
 while elapsed <= duration:
-    res0 = eqn.sweep(c_var, dt=dt, solver=solver) 
+    res0 = eqn.sweep(c_var, dt=dt, solver=solver)
+    #record the volume integral of the free energy 
+    # equivalent to the average value of the free energy for any cell,
+    # multiplied by the number of cells and the area of each cell
+    # (since this is a 2D domain)
+       
     
     for sweeps in range(total_sweeps):
         res = eqn.sweep(c_var, dt=dt, solver=solver)
@@ -208,3 +215,5 @@ while elapsed <= duration:
 
 # simulation ends
 print 'steps reached:', steps
+
+
